@@ -69,6 +69,7 @@ void main() {
         vec2 screenDy = dFdy(markerScreen);
         vec3 viewDx = dFdx(markerView);
         vec3 viewDy = dFdy(markerView);
+        vec2 texDx = dFdx(texCoord0);
 
         ivec2 pixel = ivec2(gl_FragCoord.xy);
         int field = pixel.x - 1;
@@ -76,12 +77,16 @@ void main() {
             discard;
         }
 
-        // In either bow-tie triangle, dFdy * MARKER_BLOCK_PX is the glyph diagonal (v2 - v0) and dFdx * it one edge.
-        vec2 screenCenter = markerScreen - screenDx * gl_FragCoord.x - screenDy * (gl_FragCoord.y - 0.5 * MARKER_BLOCK_PX);
-        vec3 viewCenter = markerView - viewDx * gl_FragCoord.x - viewDy * (gl_FragCoord.y - 0.5 * MARKER_BLOCK_PX);
-        float height = length(viewDx) * MARKER_BLOCK_PX;
-        // dFdx is +-height depending on the triangle, so width is the shorter of dy -+ dx; sqrt(diag^2 - h^2) is too noisy.
-        float width = min(length(viewDy - viewDx), length(viewDy + viewDx)) * MARKER_BLOCK_PX;
+        // Both triangles share the glyph diagonal through the block center, so the value there is the glyph center, and
+        // block x/y derivatives are its two edges; the edge whose UV changes in v (not u) is the height.
+        vec2 fromCenter = gl_FragCoord.xy - 0.5 * MARKER_BLOCK_PX;
+        vec2 screenCenter = markerScreen - screenDx * fromCenter.x - screenDy * fromCenter.y;
+        vec3 viewCenter = markerView - viewDx * fromCenter.x - viewDy * fromCenter.y;
+        float edgeX = length(viewDx) * MARKER_BLOCK_PX;
+        float edgeY = length(viewDy) * MARKER_BLOCK_PX;
+        bool xIsHeight = abs(texDx.y) > abs(texDx.x);
+        float height = xIsHeight ? edgeX : edgeY;
+        float width = xIsHeight ? edgeY : edgeX;
 
         float depth = (ProjMat * vec4(viewCenter, 1.0)).w;
         if (depth <= 0.0) {
