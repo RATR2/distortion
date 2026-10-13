@@ -93,11 +93,11 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
     )
 
     private fun addEffect(player: Player) {
-        player.postEffects.add(POST_EFFECT)
+        player.postEffects().add(POST_EFFECT)
     }
 
     private fun removeEffect(player: Player) {
-        player.postEffects.remove(POST_EFFECT)
+        player.postEffects().remove(POST_EFFECT)
     }
 
     // The client may drop post effects on respawn or dimension change, so re-apply while ripples are live.
