@@ -52,7 +52,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
             it.backgroundColor = Color.fromARGB(0, 0, 0, 0)
             it.isShadowed = false
             it.isSeeThrough = false
-            it.billboard = Display.Billboard.CENTER
+            it.billboard = Display.Billboard.FIXED
             it.brightness = Display.Brightness(slot, 15)
             it.transformation = transformation(strength = 1f, radius = 0f)
         }
