@@ -45,19 +45,16 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         val world = location.world ?: return false
         val slot = slots.indexOfFirst { it == null }
         if (slot < 0) return false
-        val base = Location(world, location.x, location.y - radius, location.z, 0f, 0f)
-        val display = world.spawn(base, TextDisplay::class.java) {
+        val display = world.spawn(location.clone().apply { yaw = 0f; pitch = 0f }, TextDisplay::class.java) {
             it.isPersistent = false
             it.text(Component.text(GLYPH, TextColor.color(rgb and 0xFFFFFF)))
             it.textOpacity = OPACITY
             it.backgroundColor = Color.fromARGB(0, 0, 0, 0)
             it.isShadowed = false
             it.isSeeThrough = false
-            it.billboard = Display.Billboard.FIXED
-            it.displayWidth = (radius * 2).toFloat()
-            it.displayHeight = (radius * 2).toFloat()
+            it.billboard = Display.Billboard.CENTER
             it.brightness = Display.Brightness(slot, 15)
-            it.transformation = transformation(strength = 1f, radius = 0f, lift = radius.toFloat())
+            it.transformation = transformation(strength = 1f, radius = 0f)
         }
         slots[slot] = display
         // Visible by default so pack users get plain entity tracking (hidden-by-default + showEntity kept being
@@ -84,7 +81,6 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
             display.transformation = transformation(
                 strength = 1f - progress,
                 radius = radius.toFloat() * progress,
-                lift = radius.toFloat(),
             )
         }, START_DELAY_TICKS, 1L)
         return true
@@ -122,8 +118,8 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         display.remove()
     }
 
-    private fun transformation(strength: Float, radius: Float, lift: Float) = Transformation(
-        Vector3f(0f, lift, 0f),
+    private fun transformation(strength: Float, radius: Float) = Transformation(
+        Vector3f(),
         Quaternionf(),
         Vector3f(strength * SCALE_UNIT, radius * SCALE_UNIT, SCALE_UNIT),
         Quaternionf(),
