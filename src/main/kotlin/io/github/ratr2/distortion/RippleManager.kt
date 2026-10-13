@@ -30,6 +30,8 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         private const val OPACITY: Byte = 123
         private const val SCALE_UNIT = 0.01f
         private const val START_DELAY_TICKS = 3L
+        // Start slightly above 0 so the glyph is never a zero-size quad.
+        private const val MIN_RADIUS = 0.05f
         private val POST_EFFECT = Key.key("distortion", "ripple")
         private val DEBUG_EFFECT = Key.key("distortion", "ripple_debug")
     }
@@ -54,7 +56,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
             it.isSeeThrough = false
             it.billboard = Display.Billboard.FIXED
             it.brightness = Display.Brightness(slot, 15)
-            it.transformation = transformation(strength = 1f, radius = 0f)
+            it.transformation = transformation(strength = 1f, radius = MIN_RADIUS)
         }
         slots[slot] = display
         // Visible by default so pack users get plain entity tracking (hidden-by-default + showEntity kept being
@@ -63,26 +65,15 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
             if (pack.hasLoaded(it)) it.postEffects().add(effectFor(it)) else it.hideEntity(plugin, display)
         }
 
-        var tick = 0
-        plugin.server.scheduler.runTaskTimer(plugin, { task ->
-            if (!display.isValid || slots[slot] !== display) {
-                task.cancel()
-                return@runTaskTimer
-            }
-            tick++
-            if (tick > ticks) {
-                task.cancel()
-                remove(slot, display)
-                return@runTaskTimer
-            }
-            val progress = tick.toFloat() / ticks
+        // One client-side interpolation to the end state, like /data merge on a summoned marker; started after a short
+        // delay so clients have spawned the start state first, or they'd snap straight to the end.
+        plugin.server.scheduler.runTaskLater(plugin, Runnable {
+            if (!display.isValid || slots[slot] !== display) return@Runnable
             display.interpolationDelay = 0
-            display.interpolationDuration = 1
-            display.transformation = transformation(
-                strength = 1f - progress,
-                radius = radius.toFloat() * progress,
-            )
-        }, START_DELAY_TICKS, 1L)
+            display.interpolationDuration = ticks
+            display.transformation = transformation(strength = 0f, radius = radius.toFloat())
+        }, START_DELAY_TICKS)
+        plugin.server.scheduler.runTaskLater(plugin, Runnable { remove(slot, display) }, START_DELAY_TICKS + ticks + 1L)
         return true
     }
 
