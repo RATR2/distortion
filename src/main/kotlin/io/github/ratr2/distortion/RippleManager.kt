@@ -1,5 +1,6 @@
 package io.github.ratr2.distortion
 
+import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.TextColor
 import org.bukkit.Color
@@ -26,7 +27,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         private const val GLYPH = "󰀐"
         private const val OPACITY: Byte = 123
         private const val SCALE_UNIT = 0.01f
-        private const val POST_EFFECT = "distortion:ripple"
+        private val POST_EFFECT = Key.key("distortion", "ripple")
     }
 
     private val slots = arrayOfNulls<TextDisplay>(SLOTS)
@@ -91,13 +92,12 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         Quaternionf(),
     )
 
-    private fun addEffect(player: Player) = postEffect("add", player)
+    private fun addEffect(player: Player) {
+        player.postEffects.add(POST_EFFECT)
+    }
 
-    private fun removeEffect(player: Player) = postEffect("remove", player)
-
-    // By name: /posteffect rejects UUIDs since they could match non-player entities.
-    private fun postEffect(action: String, player: Player) {
-        plugin.server.dispatchCommand(plugin.server.consoleSender, "posteffect $action ${player.name} $POST_EFFECT")
+    private fun removeEffect(player: Player) {
+        player.postEffects.remove(POST_EFFECT)
     }
 
     // The client may drop post effects on respawn or dimension change, so re-apply while ripples are live.
