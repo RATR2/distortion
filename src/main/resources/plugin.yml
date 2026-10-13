@@ -8,7 +8,7 @@ load: POSTWORLD
 commands:
   distortion:
     description: Spawn a distortion ripple at your position.
-    usage: /<command> <hex> <radius max> <time in ticks>
+    usage: /<command> <hex> <radius max> <time in ticks> [x y z]
     permission: distortion.spawn
 
 permissions:

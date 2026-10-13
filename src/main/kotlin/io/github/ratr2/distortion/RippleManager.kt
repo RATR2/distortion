@@ -95,8 +95,9 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     private fun removeEffect(player: Player) = postEffect("remove", player)
 
+    // By name: /posteffect rejects UUIDs since they could match non-player entities.
     private fun postEffect(action: String, player: Player) {
-        plugin.server.dispatchCommand(plugin.server.consoleSender, "posteffect $action ${player.uniqueId} $POST_EFFECT")
+        plugin.server.dispatchCommand(plugin.server.consoleSender, "posteffect $action ${player.name} $POST_EFFECT")
     }
 
     // The client may drop post effects on respawn or dimension change, so re-apply while ripples are live.
