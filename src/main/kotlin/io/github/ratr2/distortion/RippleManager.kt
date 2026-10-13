@@ -70,15 +70,30 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
             it.postEffects().add(effectFor(it))
         }
 
-        // Shown-later entities reach clients on the next tracker pass; set the end state only once they've spawned it
-        // in the start state, or they jump straight to the end (full radius, zero strength) and nothing animates.
-        plugin.server.scheduler.runTaskLater(plugin, Runnable {
-            if (!display.isValid) return@Runnable
+        // Stepped every tick with a 1-tick interpolation rather than one long one: a metadata resend would restart a
+        // long interpolation from the beginning, but here it only replays a single tick. Starts after a short delay
+        // so clients (who get the hidden-by-default marker on the next tracker pass) have spawned it first.
+        var tick = 0
+        plugin.server.scheduler.runTaskTimer(plugin, { task ->
+            if (!display.isValid || slots[slot] !== display) {
+                task.cancel()
+                return@runTaskTimer
+            }
+            tick++
+            if (tick > ticks) {
+                task.cancel()
+                remove(slot, display)
+                return@runTaskTimer
+            }
+            val progress = tick.toFloat() / ticks
             display.interpolationDelay = 0
-            display.interpolationDuration = ticks
-            display.transformation = transformation(strength = 0f, radius = radius.toFloat(), lift = radius.toFloat())
-        }, START_DELAY_TICKS)
-        plugin.server.scheduler.runTaskLater(plugin, Runnable { remove(slot, display) }, START_DELAY_TICKS + ticks + 1L)
+            display.interpolationDuration = 1
+            display.transformation = transformation(
+                strength = 1f - progress,
+                radius = radius.toFloat() * progress,
+                lift = radius.toFloat(),
+            )
+        }, START_DELAY_TICKS, 1L)
         return true
     }
 
