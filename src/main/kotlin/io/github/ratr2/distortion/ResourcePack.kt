@@ -24,32 +24,53 @@ import java.util.zip.ZipOutputStream
 class ResourcePack(private val plugin: Distortion) : Listener {
 
     private val id: UUID = UUID.nameUUIDFromBytes("distortion-pack".toByteArray())
-    private val zip: ByteArray = buildZip()
-    private val sha1: String = MessageDigest.getInstance("SHA-1").digest(zip).joinToString("") { "%02x".format(it) }
-    private val http: HttpServer
-    val url: URI
+    private var zip: ByteArray = ByteArray(0)
+    private var sha1: String = ""
+    private var http: HttpServer? = null
+    var url: URI = URI("http://localhost")
+        private set
 
     private val loaded = HashSet<UUID>()
     var onLoaded: (Player) -> Unit = {}
 
     init {
+        start()
+    }
+
+    /** Rebuilds the pack, restarts the HTTP server from the current config and resends the pack to everyone online. */
+    fun restart() {
+        stop()
+        start()
+        plugin.server.onlinePlayers.forEach(::send)
+    }
+
+    fun stop() {
+        http?.stop(0)
+        http = null
+    }
+
+    private fun start() {
+        zip = buildZip()
+        sha1 = MessageDigest.getInstance("SHA-1").digest(zip).joinToString("") { "%02x".format(it) }
+
         val config = plugin.config
         val port = config.getInt("resource-pack.port", 8085)
         val host = config.getString("resource-pack.public-host").orEmpty()
             .ifBlank { plugin.server.ip }
             .ifBlank { "localhost" }
 
-        http = HttpServer.create(InetSocketAddress(config.getString("resource-pack.bind", "0.0.0.0"), port), 0)
-        http.createContext("/") { exchange ->
-            exchange.responseHeaders.add("Content-Type", "application/zip")
-            exchange.sendResponseHeaders(200, zip.size.toLong())
-            exchange.responseBody.use { it.write(zip) }
+        val pack = zip
+        http = HttpServer.create(InetSocketAddress(config.getString("resource-pack.bind", "0.0.0.0"), port), 0).apply {
+            createContext("/") { exchange ->
+                exchange.responseHeaders.add("Content-Type", "application/zip")
+                exchange.sendResponseHeaders(200, pack.size.toLong())
+                exchange.responseBody.use { it.write(pack) }
+            }
+            start()
         }
-        http.start()
         url = URI("http://$host:$port/distortion-$sha1.zip")
+        plugin.logger.info("Serving resource pack at $url")
     }
-
-    fun stop() = http.stop(0)
 
     fun hasLoaded(player: Player) = player.uniqueId in loaded
 
@@ -73,9 +94,11 @@ class ResourcePack(private val plugin: Distortion) : Listener {
     }
 
     @EventHandler
-    fun onJoin(event: PlayerJoinEvent) {
+    fun onJoin(event: PlayerJoinEvent) = send(event.player)
+
+    private fun send(player: Player) {
         val config = plugin.config
-        event.player.sendResourcePacks(
+        player.sendResourcePacks(
             ResourcePackRequest.resourcePackRequest()
                 .packs(ResourcePackInfo.resourcePackInfo(id, url, sha1))
                 .required(config.getBoolean("resource-pack.required", true))

@@ -5,13 +5,14 @@ main: io.github.ratr2.distortion.Distortion
 api-version: '26.3'
 load: POSTWORLD
 
-commands:
-  distortion:
-    description: Spawn a distortion ripple at your position.
-    usage: /<command> <hex> <radius max> <time in ticks> [x y z]
-    permission: distortion.spawn
-
+# /distortion itself is registered with Brigadier in Distortion.onEnable.
 permissions:
   distortion.spawn:
-    description: Allows /distortion.
+    description: Allows /distortion spawn.
+    default: op
+  distortion.reload:
+    description: Allows /distortion reload.
+    default: op
+  distortion.debug:
+    description: Allows /distortion debug.
     default: op

@@ -1,71 +1,108 @@
 package io.github.ratr2.distortion
 
+import com.mojang.brigadier.Command
+import com.mojang.brigadier.arguments.DoubleArgumentType
+import com.mojang.brigadier.arguments.IntegerArgumentType
+import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.context.CommandContext
+import com.mojang.brigadier.tree.LiteralCommandNode
+import io.papermc.paper.command.brigadier.CommandSourceStack
+import io.papermc.paper.command.brigadier.Commands
+import io.papermc.paper.command.brigadier.argument.ArgumentTypes
+import io.papermc.paper.command.brigadier.argument.resolvers.FinePositionResolver
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Location
-import org.bukkit.command.BlockCommandSender
-import org.bukkit.command.Command
-import org.bukkit.command.CommandSender
-import org.bukkit.command.TabExecutor
-import org.bukkit.entity.Entity
+import org.bukkit.entity.Player
 
 /**
- * `/distortion <hex> <radius max> <time in ticks> [x y z]`. Coordinates accept `~` relative to the sender
- * (player, entity or command block); without them the ripple spawns at the sender.
+ * ```
+ * /distortion spawn <hex> <radius> <ticks> [x y z]
+ * /distortion reload <config|host|both>
+ * /distortion debug [on|off]
+ * ```
  */
-class DistortionCommand(private val ripples: RippleManager) : TabExecutor {
+class DistortionCommand(
+    private val plugin: Distortion,
+    private val ripples: RippleManager,
+    private val pack: ResourcePack,
+) {
 
-    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
-        if (args.size != 3 && args.size != 6) return false
-
-        val rgb = args[0].removePrefix("#").takeIf { it.length == 6 }?.toIntOrNull(16)
-        val radius = args[1].toDoubleOrNull()?.takeIf { it > 0 }
-        val ticks = args[2].toIntOrNull()?.takeIf { it > 0 }
-        if (rgb == null || radius == null || ticks == null) {
-            return error(sender, "Usage: /$label <hex, e.g. #55CCFF> <radius max > 0> <time in ticks > 0> [x y z]")
-        }
-
-        val origin = when (sender) {
-            is Entity -> sender.location
-            is BlockCommandSender -> sender.block.location.add(0.5, 1.0, 0.5)
-            else -> null
-        } ?: return error(sender, "Run this as a player or from a command block.")
-
-        val location = if (args.size == 6) {
-            parse(origin, args[3], args[4], args[5]) ?: return error(sender, "Invalid coordinates: use numbers or ~ / ~offset.")
-        } else {
-            origin
-        }
-
-        if (!ripples.spawn(location, rgb, radius, ticks)) {
-            return error(sender, "All ${RippleManager.SLOTS} ripple slots are in use.")
-        }
-        return true
-    }
-
-    private fun parse(origin: Location, x: String, y: String, z: String): Location? {
-        fun coord(arg: String, base: Double): Double? =
-            if (arg.startsWith("~")) arg.drop(1).ifEmpty { "0" }.toDoubleOrNull()?.plus(base) else arg.toDoubleOrNull()
-
-        return Location(
-            origin.world,
-            coord(x, origin.x) ?: return null,
-            coord(y, origin.y) ?: return null,
-            coord(z, origin.z) ?: return null,
+    fun node(): LiteralCommandNode<CommandSourceStack> = Commands.literal("distortion")
+        .requires { source -> listOf(SPAWN, RELOAD, DEBUG).any(source.sender::hasPermission) }
+        .then(
+            Commands.literal("spawn")
+                .requires { it.sender.hasPermission(SPAWN) }
+                .then(
+                    Commands.argument("hex", StringArgumentType.string())
+                        .then(
+                            Commands.argument("radius", DoubleArgumentType.doubleArg(0.01))
+                                .then(
+                                    Commands.argument("ticks", IntegerArgumentType.integer(1))
+                                        .executes { spawn(it, it.source.location) }
+                                        .then(
+                                            Commands.argument("pos", ArgumentTypes.finePosition(false))
+                                                .executes {
+                                                    val pos = it.getArgument("pos", FinePositionResolver::class.java).resolve(it.source)
+                                                    spawn(it, pos.toLocation(it.source.location.world))
+                                                }
+                                        )
+                                )
+                        )
+                )
         )
+        .then(
+            Commands.literal("reload")
+                .requires { it.sender.hasPermission(RELOAD) }
+                .then(Commands.literal("config").executes { reload(it, config = true, host = false) })
+                .then(Commands.literal("host").executes { reload(it, config = false, host = true) })
+                .then(Commands.literal("both").executes { reload(it, config = true, host = true) })
+        )
+        .then(
+            Commands.literal("debug")
+                .requires { it.sender.hasPermission(DEBUG) && it.sender is Player }
+                .executes { debug(it, null) }
+                .then(Commands.literal("on").executes { debug(it, true) })
+                .then(Commands.literal("off").executes { debug(it, false) })
+        )
+        .build()
+
+    private fun debug(context: CommandContext<CommandSourceStack>, enabled: Boolean?): Int {
+        val player = context.source.sender as Player
+        val on = enabled ?: !ripples.isDebugging(player)
+        ripples.setDebug(player, on)
+        val state = if (on) "on: outlines + center crosses per ripple, raw data strip in the corner" else "off"
+        player.sendMessage(Component.text("Distortion debug $state.", NamedTextColor.YELLOW))
+        return Command.SINGLE_SUCCESS
     }
 
-    private fun error(sender: CommandSender, message: String): Boolean {
-        sender.sendMessage(Component.text(message, NamedTextColor.RED))
-        return true
+    private fun spawn(context: CommandContext<CommandSourceStack>, location: Location): Int {
+        val sender = context.source.sender
+        val rgb = StringArgumentType.getString(context, "hex").removePrefix("#").takeIf { it.length == 6 }?.toIntOrNull(16)
+        if (rgb == null) {
+            sender.sendMessage(Component.text("Color must be 6 hex digits, e.g. 55CCFF.", NamedTextColor.RED))
+            return 0
+        }
+        val radius = DoubleArgumentType.getDouble(context, "radius")
+        val ticks = IntegerArgumentType.getInteger(context, "ticks")
+        if (!ripples.spawn(location, rgb, radius, ticks)) {
+            sender.sendMessage(Component.text("All ${RippleManager.SLOTS} ripple slots are in use.", NamedTextColor.RED))
+            return 0
+        }
+        return Command.SINGLE_SUCCESS
     }
 
-    override fun onTabComplete(sender: CommandSender, command: Command, label: String, args: Array<out String>): List<String> =
-        when (args.size) {
-            1 -> listOf("#55CCFF", "#FF8833", "#FFFFFF")
-            2 -> listOf("4", "8", "16")
-            3 -> listOf("20", "40", "60")
-            in 4..6 -> listOf("~")
-            else -> emptyList()
-        }.filter { it.startsWith(args.last(), ignoreCase = true) }
+    private fun reload(context: CommandContext<CommandSourceStack>, config: Boolean, host: Boolean): Int {
+        if (config) plugin.reloadConfig()
+        if (host) pack.restart()
+        val what = listOfNotNull("config".takeIf { config }, "pack host (${pack.url})".takeIf { host }).joinToString(" and ")
+        context.source.sender.sendMessage(Component.text("Reloaded $what.", NamedTextColor.GREEN))
+        return Command.SINGLE_SUCCESS
+    }
+
+    companion object {
+        const val SPAWN = "distortion.spawn"
+        const val RELOAD = "distortion.reload"
+        const val DEBUG = "distortion.debug"
+    }
 }
