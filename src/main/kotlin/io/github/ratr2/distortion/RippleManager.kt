@@ -11,6 +11,7 @@ import org.bukkit.entity.TextDisplay
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerChangedWorldEvent
+import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerRespawnEvent
 import org.bukkit.util.Transformation
 import org.joml.Quaternionf
@@ -47,7 +48,6 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         val base = Location(world, location.x, location.y - radius, location.z, 0f, 0f)
         val display = world.spawn(base, TextDisplay::class.java) {
             it.isPersistent = false
-            it.isVisibleByDefault = false
             it.text(Component.text(GLYPH, TextColor.color(rgb and 0xFFFFFF)))
             it.textOpacity = OPACITY
             it.backgroundColor = Color.fromARGB(0, 0, 0, 0)
@@ -60,11 +60,10 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
             it.transformation = transformation(strength = 1f, radius = 0f, lift = radius.toFloat())
         }
         slots[slot] = display
-        // Only pack users get the marker; without the pack it would show as a stray glyph.
-        // Re-assert the effect too: add() is a no-op if present, and covers it being dropped after the pack loaded.
-        pack.loadedPlayers().forEach {
-            it.showEntity(plugin, display)
-            it.postEffects().add(effectFor(it))
+        // Visible by default so pack users get plain entity tracking (hidden-by-default + showEntity kept being
+        // despawned and respawned client-side as players moved); only players without the pack get it hidden.
+        plugin.server.onlinePlayers.forEach {
+            if (pack.hasLoaded(it)) it.postEffects().add(effectFor(it)) else it.hideEntity(plugin, display)
         }
 
         var tick = 0
@@ -99,6 +98,11 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
     fun onPackLoaded(player: Player) {
         slots.filterNotNull().forEach { player.showEntity(plugin, it) }
         player.postEffects().add(effectFor(player))
+    }
+
+    @EventHandler
+    fun onJoin(event: PlayerJoinEvent) {
+        slots.filterNotNull().forEach { event.player.hideEntity(plugin, it) }
     }
 
     fun isDebugging(player: Player) = player.uniqueId in debugging
