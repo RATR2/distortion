@@ -63,7 +63,11 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         }
         slots[slot] = display
         // Only pack users get the marker; without the pack it would show as a stray glyph.
-        pack.loadedPlayers().forEach { it.showEntity(plugin, display) }
+        // Re-assert the effect too: add() is a no-op if present, and covers it being dropped after the pack loaded.
+        pack.loadedPlayers().forEach {
+            it.showEntity(plugin, display)
+            it.postEffects().add(effectFor(it))
+        }
 
         // A tick later so clients have the start state, then let them interpolate to the end state.
         plugin.server.scheduler.runTaskLater(plugin, Runnable {
