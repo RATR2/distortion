@@ -44,9 +44,6 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         val world = location.world ?: return false
         val slot = slots.indexOfFirst { it == null }
         if (slot < 0) return false
-
-        // Culled as a box from radius below the center to radius above it, so the ring stays while any of it is on
-        // screen; the glyph is lifted back to the center by the transformation's translation.
         val base = Location(world, location.x, location.y - radius, location.z, 0f, 0f)
         val display = world.spawn(base, TextDisplay::class.java) {
             it.isPersistent = false
@@ -70,15 +67,27 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
             it.postEffects().add(effectFor(it))
         }
 
-        // Shown-later entities reach clients on the next tracker pass; set the end state only once they've spawned it
-        // in the start state, or they jump straight to the end (full radius, zero strength) and nothing animates.
-        plugin.server.scheduler.runTaskLater(plugin, Runnable {
-            if (!display.isValid) return@Runnable
+        var tick = 0
+        plugin.server.scheduler.runTaskTimer(plugin, { task ->
+            if (!display.isValid || slots[slot] !== display) {
+                task.cancel()
+                return@runTaskTimer
+            }
+            tick++
+            if (tick > ticks) {
+                task.cancel()
+                remove(slot, display)
+                return@runTaskTimer
+            }
+            val progress = tick.toFloat() / ticks
             display.interpolationDelay = 0
-            display.interpolationDuration = ticks
-            display.transformation = transformation(strength = 0f, radius = radius.toFloat(), lift = radius.toFloat())
-        }, START_DELAY_TICKS)
-        plugin.server.scheduler.runTaskLater(plugin, Runnable { remove(slot, display) }, START_DELAY_TICKS + ticks + 1L)
+            display.interpolationDuration = 1
+            display.transformation = transformation(
+                strength = 1f - progress,
+                radius = radius.toFloat() * progress,
+                lift = radius.toFloat(),
+            )
+        }, START_DELAY_TICKS, 1L)
         return true
     }
 
@@ -87,8 +96,6 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         pack.loadedPlayers().forEach { it.postEffects().remove(effectFor(it)) }
     }
 
-    // The effect stays on for pack users: with no live markers it just copies the screen, and toggling it per
-    // ripple left a tick where a marker's data pixels showed before the effect synced.
     fun onPackLoaded(player: Player) {
         slots.filterNotNull().forEach { player.showEntity(plugin, it) }
         player.postEffects().add(effectFor(player))
@@ -96,7 +103,6 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     fun isDebugging(player: Player) = player.uniqueId in debugging
 
-    /** Swaps [player] between the normal and debug ripple effect; they must never run stacked. */
     fun setDebug(player: Player, enabled: Boolean) {
         val effects = player.postEffects()
         effects.remove(effectFor(player))
