@@ -41,7 +41,10 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         val slot = slots.indexOfFirst { it == null }
         if (slot < 0) return false
 
-        val display = world.spawn(location, TextDisplay::class.java) {
+        // Culled as a box from radius below the center to radius above it, so the ring stays while any of it is on
+        // screen; the glyph is lifted back to the center by the transformation's translation.
+        val base = Location(world, location.x, location.y - radius, location.z, 0f, 0f)
+        val display = world.spawn(base, TextDisplay::class.java) {
             it.isPersistent = false
             it.isVisibleByDefault = false
             it.text(Component.text(GLYPH, TextColor.color(rgb and 0xFFFFFF)))
@@ -49,21 +52,22 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
             it.backgroundColor = Color.fromARGB(0, 0, 0, 0)
             it.isShadowed = false
             it.isSeeThrough = false
-            it.billboard = Display.Billboard.CENTER
+            it.billboard = Display.Billboard.FIXED
+            it.displayWidth = (radius * 2).toFloat()
+            it.displayHeight = (radius * 2).toFloat()
             it.brightness = Display.Brightness(slot, 15)
-            it.transformation = scale(strength = 1f, radius = 0f)
+            it.transformation = transformation(strength = 1f, radius = 0f, lift = radius.toFloat())
         }
         slots[slot] = display
         // Only pack users get the marker; without the pack it would show as a stray glyph.
         pack.loadedPlayers().forEach { it.showEntity(plugin, display) }
-        if (activeCount == 1) pack.loadedPlayers().forEach(::addEffect)
 
         // A tick later so clients have the start state, then let them interpolate to the end state.
         plugin.server.scheduler.runTaskLater(plugin, Runnable {
             if (!display.isValid) return@Runnable
             display.interpolationDelay = 0
             display.interpolationDuration = ticks
-            display.transformation = scale(strength = 0f, radius = radius.toFloat())
+            display.transformation = transformation(strength = 0f, radius = radius.toFloat(), lift = radius.toFloat())
         }, 1L)
         plugin.server.scheduler.runTaskLater(plugin, Runnable { remove(slot, display) }, ticks + 2L)
         return true
@@ -71,36 +75,30 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     fun clear() {
         for (slot in slots.indices) slots[slot]?.let { remove(slot, it) }
+        pack.loadedPlayers().forEach { it.postEffects().remove(POST_EFFECT) }
     }
 
+    // The effect stays on for pack users: with no live markers it just copies the screen, and toggling it per
+    // ripple left a tick where a marker's data pixels showed before the effect synced.
     fun onPackLoaded(player: Player) {
         slots.filterNotNull().forEach { player.showEntity(plugin, it) }
-        if (activeCount > 0) addEffect(player)
+        player.postEffects().add(POST_EFFECT)
     }
 
     private fun remove(slot: Int, display: TextDisplay) {
         if (slots[slot] !== display) return
         slots[slot] = null
         display.remove()
-        if (activeCount == 0) pack.loadedPlayers().forEach(::removeEffect)
     }
 
-    private fun scale(strength: Float, radius: Float) = Transformation(
-        Vector3f(),
+    private fun transformation(strength: Float, radius: Float, lift: Float) = Transformation(
+        Vector3f(0f, lift, 0f),
         Quaternionf(),
         Vector3f(strength * SCALE_UNIT, radius * SCALE_UNIT, SCALE_UNIT),
         Quaternionf(),
     )
 
-    private fun addEffect(player: Player) {
-        player.postEffects().add(POST_EFFECT)
-    }
-
-    private fun removeEffect(player: Player) {
-        player.postEffects().remove(POST_EFFECT)
-    }
-
-    // The client may drop post effects on respawn or dimension change, so re-apply while ripples are live.
+    // The client may drop post effects on respawn or dimension change, so re-apply.
     @EventHandler
     fun onRespawn(event: PlayerRespawnEvent) = reapply(event.player)
 
@@ -109,7 +107,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     private fun reapply(player: Player) {
         plugin.server.scheduler.runTaskLater(plugin, Runnable {
-            if (player.isOnline && pack.hasLoaded(player) && activeCount > 0) addEffect(player)
+            if (player.isOnline && pack.hasLoaded(player)) player.postEffects().add(POST_EFFECT)
         }, 1L)
     }
 }
