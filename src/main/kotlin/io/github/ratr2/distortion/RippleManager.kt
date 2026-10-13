@@ -28,6 +28,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         private const val GLYPH = "󰀐"
         private const val OPACITY: Byte = 123
         private const val SCALE_UNIT = 0.01f
+        private const val START_DELAY_TICKS = 3L
         private val POST_EFFECT = Key.key("distortion", "ripple")
         private val DEBUG_EFFECT = Key.key("distortion", "ripple_debug")
     }
@@ -69,14 +70,15 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
             it.postEffects().add(effectFor(it))
         }
 
-        // A tick later so clients have the start state, then let them interpolate to the end state.
+        // Shown-later entities reach clients on the next tracker pass; set the end state only once they've spawned it
+        // in the start state, or they jump straight to the end (full radius, zero strength) and nothing animates.
         plugin.server.scheduler.runTaskLater(plugin, Runnable {
             if (!display.isValid) return@Runnable
             display.interpolationDelay = 0
             display.interpolationDuration = ticks
             display.transformation = transformation(strength = 0f, radius = radius.toFloat(), lift = radius.toFloat())
-        }, 1L)
-        plugin.server.scheduler.runTaskLater(plugin, Runnable { remove(slot, display) }, ticks + 2L)
+        }, START_DELAY_TICKS)
+        plugin.server.scheduler.runTaskLater(plugin, Runnable { remove(slot, display) }, START_DELAY_TICKS + ticks + 1L)
         return true
     }
 
