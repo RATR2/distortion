@@ -1,0 +1,6 @@
+name: distortion
+version: '${version}'
+
+main: io.github.ratr2.distortion.Distortion
+api-version: '26.3'
+load: POSTWORLD
