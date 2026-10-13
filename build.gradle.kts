@@ -23,6 +23,15 @@ tasks {
         dependsOn(shadowJar)
     }
 
+    // The shaded jar (with the Kotlin runtime) is the one to deploy, so give it the plain name.
+    shadowJar {
+        archiveClassifier.set("")
+    }
+
+    jar {
+        archiveClassifier.set("plain")
+    }
+
     runServer {
         // Configure the Minecraft version for our task.
         // This is the only required configuration besides applying the plugin.
