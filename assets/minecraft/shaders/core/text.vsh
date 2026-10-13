@@ -57,9 +57,10 @@ void main() {
         // Depth of a point 0.1 blocks ahead via the real ProjMat, so it passes the depth test under any convention.
         vec4 nearClip = ProjMat * vec4(viewPos.xyz * (0.1 / length(viewPos.xyz)), 1.0);
 
-        // Z-order corners: a bow-tie under 0,1,2/2,3,0 indices, so the left wedge survives either cull winding.
-        int corner = gl_VertexIndex % 4;
-        vec2 cornerUv = vec2(float(corner & 1), float((corner >> 1) & 1));
+        // Counter-clockwise perimeter order: any rotation of it (mods can shift where a glyph's vertices start in the
+        // buffer) still fills the whole block with the winding that survives culling. text.fsh doesn't rely on order.
+        const vec2 CORNERS[4] = vec2[](vec2(0.0, 0.0), vec2(1.0, 0.0), vec2(1.0, 1.0), vec2(0.0, 1.0));
+        vec2 cornerUv = CORNERS[gl_VertexIndex % 4];
         gl_Position = vec4(vec2(-1.0) + cornerUv * (2.0 * MARKER_BLOCK_PX / ScreenSize), nearClip.z / nearClip.w, 1.0);
         return;
     }
