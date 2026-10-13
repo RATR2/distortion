@@ -1,0 +1,10 @@
+{
+	"pack": {
+		"pack_format": 75,	
+		"supported_formats": {"min_inclusive": 61, "max_inclusive": 81},
+		"description": [
+			"\n",
+			{"text": "§f\uDBB2\uDD8D"}
+		]
+    }   
+}
