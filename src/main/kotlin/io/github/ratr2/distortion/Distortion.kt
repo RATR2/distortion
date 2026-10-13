@@ -1,5 +1,6 @@
 package io.github.ratr2.distortion
 
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 
@@ -16,13 +17,11 @@ class Distortion : JavaPlugin() {
 
         server.pluginManager.registerEvents(pack, this)
         server.pluginManager.registerEvents(ripples, this)
-        val command = DistortionCommand(ripples)
-        getCommand("distortion")!!.apply {
-            setExecutor(command)
-            tabCompleter = command
+        val command = DistortionCommand(this, ripples, pack)
+        lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
+            event.registrar().register(command.node(), "Spawn and debug distortion ripples")
         }
         DistortionAPI.manager = ripples
-        logger.info("Serving resource pack at ${pack.url}")
     }
 
     override fun onDisable() {

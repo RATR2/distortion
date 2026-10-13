@@ -15,6 +15,7 @@ import org.bukkit.event.player.PlayerRespawnEvent
 import org.bukkit.util.Transformation
 import org.joml.Quaternionf
 import org.joml.Vector3f
+import java.util.UUID
 
 /**
  * Spawns the marker text displays the resource pack's text shader turns into ripples.
@@ -28,9 +29,11 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         private const val OPACITY: Byte = 123
         private const val SCALE_UNIT = 0.01f
         private val POST_EFFECT = Key.key("distortion", "ripple")
+        private val DEBUG_EFFECT = Key.key("distortion", "ripple_debug")
     }
 
     private val slots = arrayOfNulls<TextDisplay>(SLOTS)
+    private val debugging = HashSet<UUID>()
 
     val activeCount get() = slots.count { it != null }
 
@@ -60,7 +63,11 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         }
         slots[slot] = display
         // Only pack users get the marker; without the pack it would show as a stray glyph.
-        pack.loadedPlayers().forEach { it.showEntity(plugin, display) }
+        // Re-assert the effect too: add() is a no-op if present, and covers it being dropped after the pack loaded.
+        pack.loadedPlayers().forEach {
+            it.showEntity(plugin, display)
+            it.postEffects().add(effectFor(it))
+        }
 
         // A tick later so clients have the start state, then let them interpolate to the end state.
         plugin.server.scheduler.runTaskLater(plugin, Runnable {
@@ -75,15 +82,27 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     fun clear() {
         for (slot in slots.indices) slots[slot]?.let { remove(slot, it) }
-        pack.loadedPlayers().forEach { it.postEffects().remove(POST_EFFECT) }
+        pack.loadedPlayers().forEach { it.postEffects().remove(effectFor(it)) }
     }
 
     // The effect stays on for pack users: with no live markers it just copies the screen, and toggling it per
     // ripple left a tick where a marker's data pixels showed before the effect synced.
     fun onPackLoaded(player: Player) {
         slots.filterNotNull().forEach { player.showEntity(plugin, it) }
-        player.postEffects().add(POST_EFFECT)
+        player.postEffects().add(effectFor(player))
     }
+
+    fun isDebugging(player: Player) = player.uniqueId in debugging
+
+    /** Swaps [player] between the normal and debug ripple effect; they must never run stacked. */
+    fun setDebug(player: Player, enabled: Boolean) {
+        val effects = player.postEffects()
+        effects.remove(effectFor(player))
+        if (enabled) debugging.add(player.uniqueId) else debugging.remove(player.uniqueId)
+        if (pack.hasLoaded(player)) effects.add(effectFor(player))
+    }
+
+    private fun effectFor(player: Player) = if (isDebugging(player)) DEBUG_EFFECT else POST_EFFECT
 
     private fun remove(slot: Int, display: TextDisplay) {
         if (slots[slot] !== display) return
@@ -107,7 +126,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     private fun reapply(player: Player) {
         plugin.server.scheduler.runTaskLater(plugin, Runnable {
-            if (player.isOnline && pack.hasLoaded(player)) player.postEffects().add(POST_EFFECT)
+            if (player.isOnline && pack.hasLoaded(player)) player.postEffects().add(effectFor(player))
         }, 1L)
     }
 }
