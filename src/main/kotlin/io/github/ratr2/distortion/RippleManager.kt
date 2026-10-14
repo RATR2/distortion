@@ -25,7 +25,7 @@ import java.util.UUID
 class RippleManager(private val plugin: Distortion, private val pack: ResourcePack) : Listener {
 
     companion object {
-        const val SLOTS = 16
+        const val SLOTS = 256
         private const val GLYPH = "󰀐"
         private const val OPACITY: Byte = 123
         private const val SCALE_UNIT = 0.01f
@@ -55,7 +55,8 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
             it.isShadowed = false
             it.isSeeThrough = false
             it.billboard = Display.Billboard.FIXED
-            it.brightness = Display.Brightness(slot, 15)
+            // The pack reads the slot as block + 16 * sky.
+            it.brightness = Display.Brightness(slot % 16, slot / 16)
             it.transformation = transformation(strength = 1f, radius = MIN_RADIUS)
         }
         slots[slot] = display

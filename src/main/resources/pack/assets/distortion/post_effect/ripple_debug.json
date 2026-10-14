@@ -1,8 +1,20 @@
 {
     "targets": {
-        "swap": {}
+        "swap": {},
+        "mask": {}
     },
     "passes": [
+        {
+            "vertex_shader": "minecraft:core/screenquad",
+            "fragment_shader": "distortion:post/ripple_mask",
+            "inputs": [
+                {
+                    "sampler_name": "In",
+                    "target": "minecraft:main"
+                }
+            ],
+            "output": "mask"
+        },
         {
             "vertex_shader": "minecraft:core/screenquad",
             "fragment_shader": "distortion:post/ripple",
@@ -10,6 +22,10 @@
                 {
                     "sampler_name": "In",
                     "target": "minecraft:main"
+                },
+                {
+                    "sampler_name": "Mask",
+                    "target": "mask"
                 }
             ],
             "output": "swap",
