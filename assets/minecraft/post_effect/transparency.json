@@ -6,7 +6,7 @@
     },
     "passes": [
         {
-            "vertex_shader": "minecraft:core/screenquad",
+            "vertex_shader": "minecraft:post/screenquad",
             "fragment_shader": "minecraft:post/transparency",
             "inputs": [
                 {
@@ -67,7 +67,7 @@
             "output": "final"
         },
         {
-            "vertex_shader": "minecraft:core/screenquad",
+            "vertex_shader": "minecraft:post/blit",
             "fragment_shader": "minecraft:post/blit",
             "inputs": [
                 {
@@ -87,7 +87,7 @@
             "output": "minecraft:main"
         },
         {
-            "vertex_shader": "minecraft:core/screenquad",
+            "vertex_shader": "minecraft:post/screenquad",
             "fragment_shader": "distortion:post/ripple_mask",
             "inputs": [
                 {
@@ -98,7 +98,7 @@
             "output": "mask"
         },
         {
-            "vertex_shader": "minecraft:core/screenquad",
+            "vertex_shader": "minecraft:post/screenquad",
             "fragment_shader": "distortion:post/ripple",
             "inputs": [
                 {
@@ -132,7 +132,7 @@
             }
         },
         {
-            "vertex_shader": "minecraft:core/screenquad",
+            "vertex_shader": "minecraft:post/blit",
             "fragment_shader": "minecraft:post/blit",
             "inputs": [
                 {
