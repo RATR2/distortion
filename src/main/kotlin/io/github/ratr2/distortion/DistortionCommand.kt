@@ -97,9 +97,10 @@ class DistortionCommand(
 
     private fun reload(context: CommandContext<CommandSourceStack>, config: Boolean, host: Boolean): Int {
         if (config) plugin.reloadConfig()
-        if (host) pack.restart()
-        val what = listOfNotNull("config".takeIf { config }, "pack host (${pack.baseUrl})".takeIf { host }).joinToString(" and ")
+        val error = if (host) pack.restart() else null
+        val what = listOfNotNull("config".takeIf { config }, "pack host (${pack.serverDescription})".takeIf { host }).joinToString(" and ")
         context.source.sender.sendMessage(Component.text("Reloaded $what.", NamedTextColor.GREEN))
+        if (error != null) context.source.sender.sendMessage(Component.text(error, NamedTextColor.RED))
         return Command.SINGLE_SUCCESS
     }
 

@@ -1,6 +1,5 @@
 package io.github.ratr2.distortion
 
-import com.sun.net.httpserver.HttpServer
 import net.kyori.adventure.resource.ResourcePackInfo
 import net.kyori.adventure.resource.ResourcePackRequest
 import net.kyori.adventure.text.Component
@@ -13,8 +12,6 @@ import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.player.PlayerResourcePackStatusEvent
 import org.bukkit.event.player.PlayerResourcePackStatusEvent.Status
 import java.io.ByteArrayOutputStream
-import java.net.InetSocketAddress
-import java.net.URI
 import java.security.MessageDigest
 import java.util.UUID
 import java.util.jar.JarFile
@@ -33,10 +30,19 @@ class ResourcePack(private val plugin: Distortion, private val versions: ClientV
         val fileName get() = "distortion-${era.id}-$sha1.zip"
     }
 
+    @Volatile
     private var built = emptyMap<PackEra, Built>()
-    private var http: HttpServer? = null
-    var baseUrl: String = "http://localhost"
-        private set
+
+    @Volatile
+    private var byFile = emptyMap<String, Built>()
+
+    /** The pack server, shared with other plugins that use the same scheme (Repack): whichever starts first hosts it. */
+    private val host = SharedHost(plugin, "distortion", 8085) { name -> byFile[name]?.zip }
+
+    val baseUrl: String get() = host.baseUrl
+
+    /** Says who serves the packs and where, for logs and commands. */
+    val serverDescription: String get() = host.description
 
     private val loaded = HashMap<UUID, PackEra>()
     var onLoaded: (Player) -> Unit = {}
@@ -45,44 +51,30 @@ class ResourcePack(private val plugin: Distortion, private val versions: ClientV
         start()
     }
 
-    /** Rebuilds the packs, restarts the HTTP server from the current config and resends the pack to everyone online. */
-    fun restart() {
-        stop()
-        start()
+    /**
+     * Rebuilds the packs, applies a changed port or sharing setting without a restart, and resends the pack to everyone online.
+     * Returns an error message when the pack server could not be moved, otherwise null.
+     */
+    fun restart(): String? {
+        build()
+        val error = host.restart()
         plugin.server.onlinePlayers.forEach(::send)
+        return error
     }
 
     fun stop() {
-        http?.stop(0)
-        http = null
+        host.stop()
     }
 
     private fun start() {
+        build()
+        host.start()
+        plugin.logger.info("Resource packs ${built.keys.joinToString { it.id }}: pack server ${host.description}")
+    }
+
+    private fun build() {
         built = PackEra.entries.associateWith { Built(it, buildZip(it)) }
-
-        val config = plugin.config
-        val port = config.getInt("resource-pack.port", 8085)
-        val host = config.getString("resource-pack.public-host").orEmpty()
-            .ifBlank { plugin.server.ip }
-            .ifBlank { "localhost" }
-
-        val byFile = built.values.associateBy { it.fileName }
-        http = HttpServer.create(InetSocketAddress(config.getString("resource-pack.bind", "0.0.0.0"), port), 0).apply {
-            createContext("/") { exchange ->
-                val pack = byFile[exchange.requestURI.path.removePrefix("/")]
-                if (pack == null) {
-                    exchange.sendResponseHeaders(404, -1)
-                } else {
-                    exchange.responseHeaders.add("Content-Type", "application/zip")
-                    exchange.sendResponseHeaders(200, pack.zip.size.toLong())
-                    exchange.responseBody.use { it.write(pack.zip) }
-                }
-                exchange.close()
-            }
-            start()
-        }
-        baseUrl = "http://$host:$port"
-        plugin.logger.info("Serving ${built.size} resource packs (${built.keys.joinToString { it.id }}) at $baseUrl")
+        byFile = built.values.associateBy { it.fileName }
     }
 
     fun hasLoaded(player: Player) = player.uniqueId in loaded
@@ -118,19 +110,29 @@ class ResourcePack(private val plugin: Distortion, private val versions: ClientV
         return out.toByteArray()
     }
 
+    /** Waits a moment after joining, so the pack does not arrive in the same instant as everything else the server sends. */
     @EventHandler
-    fun onJoin(event: PlayerJoinEvent) = send(event.player)
+    fun onJoin(event: PlayerJoinEvent) {
+        val player = event.player
+        val delay = plugin.config.getInt("resource-pack.join-delay-ticks", 40).coerceAtLeast(0).toLong()
+        plugin.server.scheduler.runTaskLater(plugin, Runnable { if (player.isOnline) send(player) }, delay)
+    }
 
+    /** Sends the pack for the player's client version when it is their turn, spaced out from packs other plugins send them. */
     private fun send(player: Player) {
         val pack = eraOf(player)?.let(built::get)
         if (pack == null) {
             notifyUnsupported(player)
             return
         }
+        host.enqueue(player.uniqueId) { if (player.isOnline) sendNow(player, pack) }
+    }
+
+    private fun sendNow(player: Player, pack: Built) {
         val config = plugin.config
         player.sendResourcePacks(
             ResourcePackRequest.resourcePackRequest()
-                .packs(ResourcePackInfo.resourcePackInfo(pack.id, URI("$baseUrl/${pack.fileName}"), pack.sha1))
+                .packs(ResourcePackInfo.resourcePackInfo(pack.id, host.urlOf(pack.fileName), pack.sha1))
                 .required(config.getBoolean("resource-pack.required", true))
                 .prompt(Component.text(config.getString("resource-pack.prompt").orEmpty()))
                 .build()
