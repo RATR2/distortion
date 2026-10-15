@@ -20,7 +20,7 @@ import java.util.UUID
 
 /**
  * Spawns the marker text displays the resource pack's text shader turns into ripples.
- * Must match assets/minecraft/shaders/core/text.vsh / text.fsh in the pack.
+ * Must match the text shaders (text.vsh / text.fsh, rendertype_text.* before 26.2) in every pack under packs/.
  */
 class RippleManager(private val plugin: Distortion, private val pack: ResourcePack) : Listener {
 
@@ -63,7 +63,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         // Visible by default so pack users get plain entity tracking (hidden-by-default + showEntity kept being
         // despawned and respawned client-side as players moved); only players without the pack get it hidden.
         plugin.server.onlinePlayers.forEach {
-            if (pack.hasLoaded(it)) it.postEffects().add(effectFor(it)) else it.hideEntity(plugin, display)
+            if (pack.hasLoaded(it)) applyEffect(it) else it.hideEntity(plugin, display)
         }
 
         // One client-side interpolation to the end state, like /data merge on a summoned marker; started after a short
@@ -80,12 +80,20 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     fun clear() {
         for (slot in slots.indices) slots[slot]?.let { remove(slot, it) }
-        pack.loadedPlayers().forEach { it.postEffects().remove(effectFor(it)) }
+        pack.loadedPlayers().filter(pack::usesPostEffects).forEach { it.postEffects().remove(effectFor(it)) }
     }
 
     fun onPackLoaded(player: Player) {
         slots.filterNotNull().forEach { player.showEntity(plugin, it) }
-        player.postEffects().add(effectFor(player))
+        applyEffect(player)
+    }
+
+    /**
+     * Older clients (1.21.x to 26.2) have no server driven post effect packet; their pack carries the ripple passes in
+     * the Fabulous graphics transparency effect, so there is nothing to add for them.
+     */
+    private fun applyEffect(player: Player) {
+        if (pack.usesPostEffects(player)) player.postEffects().add(effectFor(player))
     }
 
     @EventHandler
@@ -95,11 +103,14 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     fun isDebugging(player: Player) = player.uniqueId in debugging
 
-    fun setDebug(player: Player, enabled: Boolean) {
+    /** False when this player's client has no debug effect (only the 26.3 pack ships one). */
+    fun setDebug(player: Player, enabled: Boolean): Boolean {
+        if (!pack.supportsPostEffects(player)) return false
         val effects = player.postEffects()
         effects.remove(effectFor(player))
         if (enabled) debugging.add(player.uniqueId) else debugging.remove(player.uniqueId)
         if (pack.hasLoaded(player)) effects.add(effectFor(player))
+        return true
     }
 
     private fun effectFor(player: Player) = if (isDebugging(player)) DEBUG_EFFECT else POST_EFFECT
@@ -126,7 +137,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     private fun reapply(player: Player) {
         plugin.server.scheduler.runTaskLater(plugin, Runnable {
-            if (player.isOnline && pack.hasLoaded(player)) player.postEffects().add(effectFor(player))
+            if (player.isOnline && pack.hasLoaded(player)) applyEffect(player)
         }, 1L)
     }
 }

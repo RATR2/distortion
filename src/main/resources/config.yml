@@ -8,3 +8,5 @@ resource-pack:
   # Kick players who decline the pack.
   required: true
   prompt: "This server uses a resource pack for distortion effects."
+# Tell players when their client version can't see the effects, or only sees them with Fabulous! graphics.
+client-notices: true

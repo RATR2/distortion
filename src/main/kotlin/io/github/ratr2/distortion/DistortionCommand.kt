@@ -70,7 +70,10 @@ class DistortionCommand(
     private fun debug(context: CommandContext<CommandSourceStack>, enabled: Boolean?): Int {
         val player = context.source.sender as Player
         val on = enabled ?: !ripples.isDebugging(player)
-        ripples.setDebug(player, on)
+        if (!ripples.setDebug(player, on)) {
+            player.sendMessage(Component.text("Debug view is only available on 26.3 and later clients.", NamedTextColor.RED))
+            return 0
+        }
         val state = if (on) "on: outlines + center crosses per ripple, raw data strip in the corner" else "off"
         player.sendMessage(Component.text("Distortion debug $state.", NamedTextColor.YELLOW))
         return Command.SINGLE_SUCCESS
@@ -95,7 +98,7 @@ class DistortionCommand(
     private fun reload(context: CommandContext<CommandSourceStack>, config: Boolean, host: Boolean): Int {
         if (config) plugin.reloadConfig()
         if (host) pack.restart()
-        val what = listOfNotNull("config".takeIf { config }, "pack host (${pack.url})".takeIf { host }).joinToString(" and ")
+        val what = listOfNotNull("config".takeIf { config }, "pack host (${pack.baseUrl})".takeIf { host }).joinToString(" and ")
         context.source.sender.sendMessage(Component.text("Reloaded $what.", NamedTextColor.GREEN))
         return Command.SINGLE_SUCCESS
     }

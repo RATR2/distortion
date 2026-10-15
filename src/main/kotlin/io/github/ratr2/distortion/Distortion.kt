@@ -11,7 +11,14 @@ class Distortion : JavaPlugin() {
 
     override fun onEnable() {
         saveDefaultConfig()
-        pack = ResourcePack(this)
+        val versions = ClientVersions(this)
+        if (versions.hasVia) logger.info("ViaVersion found: each player gets the pack for the client version they connect with.")
+        if (versions.hasViaBackwards) {
+            logger.warning(
+                "ViaBackwards found: clients older than ${PackEra.oldest.label.substringBefore(" to ")} will not be able to see distortion effects."
+            )
+        }
+        pack = ResourcePack(this, versions)
         ripples = RippleManager(this, pack)
         pack.onLoaded = ripples::onPackLoaded
 

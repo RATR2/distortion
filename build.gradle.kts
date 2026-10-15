@@ -7,10 +7,12 @@ plugins {
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://repo.viaversion.com")
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.3.build.+")
+    compileOnly("com.viaversion:viaversion-api:5.12.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 }
 
