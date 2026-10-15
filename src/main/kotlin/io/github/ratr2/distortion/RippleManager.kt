@@ -7,7 +7,6 @@ import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.entity.Display
 import org.bukkit.entity.Player
-import org.bukkit.entity.Pose
 import org.bukkit.entity.TextDisplay
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -50,7 +49,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         if (slot < 0) return false
         val display = world.spawn(location.clone().apply { yaw = 0f; pitch = 0f }, TextDisplay::class.java) {
             it.isPersistent = false
-            it.setPose(Pose.DYING, true)
+            it.isInvisible = true
             it.text(Component.text(GLYPH, TextColor.color(rgb and 0xFFFFFF)))
             it.textOpacity = OPACITY
             it.backgroundColor = Color.fromARGB(0, 0, 0, 0)
