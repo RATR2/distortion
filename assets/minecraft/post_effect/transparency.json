@@ -75,15 +75,18 @@
                     "target": "final"
                 }
             ],
-            "uniforms": {
-                "BlitConfig": [
-                    {
-                        "name": "ColorModulate",
-                        "type": "vec4",
-                        "value": [ 1.0, 1.0, 1.0, 1.0 ]
-                    }
-                ]
-            },
+            "uniforms": [
+                {
+                    "name": "ColorModulate",
+                    "type": "vec4",
+                    "values": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            ],
             "output": "minecraft:main"
         },
         {
@@ -111,25 +114,29 @@
                 }
             ],
             "output": "swap",
-            "uniforms": {
-                "RippleConfig": [
-                    {
-                        "name": "Width",
-                        "type": "float",
-                        "value": 0.7
-                    },
-                    {
-                        "name": "Strength",
-                        "type": "float",
-                        "value": 0.4
-                    },
-                    {
-                        "name": "Debug",
-                        "type": "float",
-                        "value": 0.0
-                    }
-                ]
-            }
+            "uniforms": [
+                {
+                    "name": "Width",
+                    "type": "float",
+                    "values": [
+                        0.7
+                    ]
+                },
+                {
+                    "name": "Strength",
+                    "type": "float",
+                    "values": [
+                        0.4
+                    ]
+                },
+                {
+                    "name": "Debug",
+                    "type": "float",
+                    "values": [
+                        0.0
+                    ]
+                }
+            ]
         },
         {
             "vertex_shader": "minecraft:post/blit",
@@ -140,15 +147,18 @@
                     "target": "swap"
                 }
             ],
-            "uniforms": {
-                "BlitConfig": [
-                    {
-                        "name": "ColorModulate",
-                        "type": "vec4",
-                        "value": [ 1.0, 1.0, 1.0, 1.0 ]
-                    }
-                ]
-            },
+            "uniforms": [
+                {
+                    "name": "ColorModulate",
+                    "type": "vec4",
+                    "values": [
+                        1.0,
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            ],
             "output": "minecraft:main"
         }
     ]

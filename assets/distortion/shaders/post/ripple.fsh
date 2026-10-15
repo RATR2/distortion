@@ -4,11 +4,9 @@ uniform sampler2D InSampler;
 
 in vec2 texCoord;
 
-layout(std140) uniform RippleConfig {
-    float Width;
-    float Strength;
-    float Debug;
-};
+uniform float Width;
+uniform float Strength;
+uniform float Debug;
 
 out vec4 fragColor;
 

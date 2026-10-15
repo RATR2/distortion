@@ -1,18 +1,22 @@
 #version 150
 
 #moj_import <minecraft:fog.glsl>
-#moj_import <minecraft:dynamictransforms.glsl>
-#moj_import <minecraft:projection.glsl>
 
 uniform sampler2D Sampler0;
 
-in float sphericalVertexDistance;
-in float cylindricalVertexDistance;
+uniform mat4 ProjMat;
+uniform vec4 ColorModulator;
+uniform float FogStart;
+uniform float FogEnd;
+uniform vec4 FogColor;
+
+in float vertexDistance;
 in vec4 vertexColor;
 in vec2 texCoord0;
 in float vMarker;
 in vec2 markerScreen;
 in vec3 markerView;
+in vec2 blockUv;
 
 out vec4 fragColor;
 
@@ -20,8 +24,6 @@ out vec4 fragColor;
 // fields start at column 1 + (s / 16) * MARKER_GROUP_STRIDE.
 const int MARKER_FIRST_ROW = 8;
 const int MARKER_GROUP_STRIDE = 6;
-// Must match rendertype_text.vsh.
-const float MARKER_BLOCK_PX = 96.0;
 const vec3 MARKER_SIGNATURE = vec3(127.0, 1.0, 126.0) / 255.0;
 // Marker glyph edge in blocks at transformation scale 1 (16 font units * 0.025).
 const float MARKER_GLYPH_BLOCKS = 0.4;
@@ -43,6 +45,11 @@ void main() {
         vec3 viewDx = dFdx(markerView);
         vec3 viewDy = dFdy(markerView);
         vec2 texDx = dFdx(texCoord0);
+        vec2 uvDx = dFdx(blockUv);
+        vec2 uvDy = dFdy(blockUv);
+
+        // blockUv runs 0..1 across the block, so its per-pixel change is one over the block's size in pixels.
+        vec2 blockPx = 1.0 / vec2(abs(uvDx.x), abs(uvDy.y));
 
         ivec2 pixel = ivec2(gl_FragCoord.xy);
         int field = pixel.x - 1 - (markerSlot / 16) * MARKER_GROUP_STRIDE;
@@ -52,11 +59,11 @@ void main() {
 
         // Both triangles share the glyph diagonal through the block center, so the value there is the glyph center, and
         // block x/y derivatives are its two edges; the edge whose UV changes in v (not u) is the height.
-        vec2 fromCenter = gl_FragCoord.xy - 0.5 * MARKER_BLOCK_PX;
+        vec2 fromCenter = gl_FragCoord.xy - 0.5 * blockPx;
         vec2 screenCenter = markerScreen - screenDx * fromCenter.x - screenDy * fromCenter.y;
         vec3 viewCenter = markerView - viewDx * fromCenter.x - viewDy * fromCenter.y;
-        float edgeX = length(viewDx) * MARKER_BLOCK_PX;
-        float edgeY = length(viewDy) * MARKER_BLOCK_PX;
+        float edgeX = length(viewDx) * blockPx.x;
+        float edgeY = length(viewDy) * blockPx.y;
         bool xIsHeight = abs(texDx.y) > abs(texDx.x);
         float height = xIsHeight ? edgeX : edgeY;
         float width = xIsHeight ? edgeY : edgeX;
@@ -95,5 +102,5 @@ void main() {
     if (color.a < 0.1) {
         discard;
     }
-    fragColor = apply_fog(color, sphericalVertexDistance, cylindricalVertexDistance, FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd, FogColor);
+    fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
 }
