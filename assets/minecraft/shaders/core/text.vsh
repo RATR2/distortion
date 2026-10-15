@@ -1,20 +1,27 @@
 #version 330
 
+#if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
 #moj_import <minecraft:fog.glsl>
+#moj_import <minecraft:sample_lightmap.glsl>
+#endif
+
 #moj_import <minecraft:dynamictransforms.glsl>
 #moj_import <minecraft:projection.glsl>
 #moj_import <minecraft:globals.glsl>
-#moj_import <minecraft:sample_lightmap.glsl>
 
 in vec3 Position;
 in vec4 Color;
 in vec2 UV0;
+#if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
 in ivec2 UV2;
+#endif
 
+#if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
 uniform sampler2D Sampler2;
-
 out float sphericalVertexDistance;
 out float cylindricalVertexDistance;
+#endif
+
 out vec4 vertexColor;
 out vec2 texCoord0;
 out float vMarker;
@@ -24,7 +31,7 @@ out vec3 markerView;
 // text_opacity that turns a world text display into a distortion:ripple marker.
 const float MARKER_OPACITY = 123.0;
 const int MARKER_SLOTS = 256;
-// Side of the data block at framebuffer texel (0,0); must match rendertype_text.fsh.
+// Side of the data block at framebuffer texel (0,0); must match text.fsh.
 const float MARKER_BLOCK_PX = 96.0;
 
 void main() {
@@ -33,6 +40,7 @@ void main() {
     markerView = vec3(0.0);
     texCoord0 = UV0;
 
+#if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
     if (abs(Color.a * 255.0 - MARKER_OPACITY) < 0.5) {
         vec4 viewPos = ModelViewMat * vec4(Position, 1.0);
         vec4 clip = ProjMat * viewPos;
@@ -56,9 +64,14 @@ void main() {
         gl_Position = vec4(vec2(-1.0) + cornerUv * (2.0 * MARKER_BLOCK_PX / ScreenSize), nearClip.z / nearClip.w, 1.0);
         return;
     }
+#endif
 
     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+#if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
     sphericalVertexDistance = fog_spherical_distance(Position);
     cylindricalVertexDistance = fog_cylindrical_distance(Position);
     vertexColor = Color * sample_lightmap(Sampler2, UV2);
+#else
+    vertexColor = Color;
+#endif
 }
