@@ -1,36 +1,26 @@
 #version 330
-#extension GL_ARB_separate_shader_objects : require
 
-#if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
-#include <minecraft:fog.glsl>
-#endif
-
-#include <minecraft:dynamictransforms.glsl>
-#include <minecraft:projection.glsl>
-#include <minecraft:oit.glsl>
+#moj_import <minecraft:fog.glsl>
+#moj_import <minecraft:dynamictransforms.glsl>
+#moj_import <minecraft:projection.glsl>
 
 uniform sampler2D Sampler0;
 
-#if !defined(IS_GUI) && !defined(IS_SEE_THROUGH)
-layout(location = 0) in float sphericalVertexDistance;
-layout(location = 1) in float cylindricalVertexDistance;
-#endif
+in float sphericalVertexDistance;
+in float cylindricalVertexDistance;
+in vec4 vertexColor;
+in vec2 texCoord0;
+in float vMarker;
+in vec2 markerScreen;
+in vec3 markerView;
 
-layout(location = 2) in vec4 vertexColor;
-layout(location = 3) in vec2 texCoord0;
-layout(location = 4) in float vMarker;
-layout(location = 5) in vec2 markerScreen;
-layout(location = 6) in vec3 markerView;
-
-#ifndef OIT_ALPHA_ONLY
-layout(location = 0) out vec4 fragColor;
-#endif
+out vec4 fragColor;
 
 // Data layout shared with distortion:post/ripple(_mask): slot s is row MARKER_FIRST_ROW + s % 16, and its five
 // fields start at column 1 + (s / 16) * MARKER_GROUP_STRIDE.
 const int MARKER_FIRST_ROW = 8;
 const int MARKER_GROUP_STRIDE = 6;
-// Must match text.vsh.
+// Must match rendertype_text.vsh.
 const float MARKER_BLOCK_PX = 96.0;
 const vec3 MARKER_SIGNATURE = vec3(127.0, 1.0, 126.0) / 255.0;
 // Marker glyph edge in blocks at transformation scale 1 (16 font units * 0.025).
@@ -42,25 +32,6 @@ const float MARKER_SCALE_UNIT = 0.01;
 vec2 encode16(float v) {
     float scaled = clamp(v, 0.0, 1.0) * 255.0;
     return vec2(floor(scaled) / 255.0, fract(scaled));
-}
-
-vec4 calculateFinalColor(vec4 color) {
-    #ifdef OIT_ACCUMULATE
-    color = sampleColorForAccumulation(color);
-    #endif
-
-    #if !defined(IS_SEE_THROUGH) && !defined(IS_GUI)
-
-    #ifdef OIT_ACCUMULATE
-    vec4 fogColor = vec4(FogColor.rgb * color.a, FogColor.a);
-    #else
-    vec4 fogColor = FogColor;
-    #endif
-
-    color = apply_fog(color, sphericalVertexDistance, cylindricalVertexDistance, FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd, fogColor);
-    #endif
-
-    return color;
 }
 
 void main() {
@@ -115,33 +86,14 @@ void main() {
             data = vec4(strength, encode16(screenPerBlock / 2.0), 1.0);
         }
 
-        // Opaque data, no texture or fog; under Improved Transparency it must still go through OIT to reach main.
-        #ifdef OIT_ALPHA_ONLY
-        executeAlphaOnlyPhase(gl_FragCoord.z, 1.0);
-        #else
-        #ifdef OIT_ACCUMULATE
-        data = sampleColorForAccumulation(data);
-        #endif
+        // Opaque data, no texture or fog.
         fragColor = data;
-        #endif
         return;
     }
 
-    #ifdef IS_GRAYSCALE
-    vec4 texColor = texture(Sampler0, texCoord0).rrrr;
-    #else
-    vec4 texColor = texture(Sampler0, texCoord0);
-    #endif
-
-    vec4 color = texColor * vertexColor * ColorModulator;
-
+    vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
     if (color.a < 0.1) {
         discard;
     }
-
-    #ifdef OIT_ALPHA_ONLY
-    executeAlphaOnlyPhase(gl_FragCoord.z, color.a);
-    #else
-    fragColor = calculateFinalColor(color);
-    #endif
+    fragColor = apply_fog(color, sphericalVertexDistance, cylindricalVertexDistance, FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd, FogColor);
 }

@@ -1,9 +1,8 @@
 #version 330
-#extension GL_ARB_separate_shader_objects : require
 
 uniform sampler2D InSampler;
 
-layout(location = 0) in vec2 texCoord;
+in vec2 texCoord;
 
 layout(std140) uniform RippleConfig {
     float Width;
@@ -11,7 +10,7 @@ layout(std140) uniform RippleConfig {
     float Debug;
 };
 
-layout(location = 0) out vec4 fragColor;
+out vec4 fragColor;
 
 // Must match assets/minecraft/shaders/core/text.fsh and ripple_mask.fsh.
 const int MARKER_GROUPS = 16;
