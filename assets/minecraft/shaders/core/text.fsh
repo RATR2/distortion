@@ -26,10 +26,12 @@ layout(location = 6) in vec3 markerView;
 layout(location = 0) out vec4 fragColor;
 #endif
 
-// Data layout shared with distortion:post/ripple: slot s is row MARKER_FIRST_ROW + s, fields in columns 1-5.
+// Data layout shared with distortion:post/ripple(_mask): slot s is row MARKER_FIRST_ROW + s % 16, and its five
+// fields start at column 1 + (s / 16) * MARKER_GROUP_STRIDE.
 const int MARKER_FIRST_ROW = 8;
+const int MARKER_GROUP_STRIDE = 6;
 // Must match text.vsh.
-const float MARKER_BLOCK_PX = 32.0;
+const float MARKER_BLOCK_PX = 96.0;
 const vec3 MARKER_SIGNATURE = vec3(127.0, 1.0, 126.0) / 255.0;
 // Marker glyph edge in blocks at transformation scale 1 (16 font units * 0.025).
 const float MARKER_GLYPH_BLOCKS = 0.4;
@@ -72,8 +74,8 @@ void main() {
         vec2 texDx = dFdx(texCoord0);
 
         ivec2 pixel = ivec2(gl_FragCoord.xy);
-        int field = pixel.x - 1;
-        if (pixel.y != MARKER_FIRST_ROW + markerSlot || field < 0 || field > 4) {
+        int field = pixel.x - 1 - (markerSlot / 16) * MARKER_GROUP_STRIDE;
+        if (pixel.y != MARKER_FIRST_ROW + markerSlot % 16 || field < 0 || field > 4) {
             discard;
         }
 
