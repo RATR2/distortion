@@ -49,6 +49,21 @@ class ResourcePack(private val plugin: Distortion, private val versions: ClientV
 
     init {
         start()
+        host.offer(::joinOffer)
+    }
+
+    /** What the host sends a joining player for Distortion, together with the other plugins' packs in one request. */
+    private fun joinOffer(playerId: UUID): Map<String, String>? {
+        val player = plugin.server.getPlayer(playerId) ?: return null
+        val pack = eraOf(player)?.let(built::get) ?: return null
+        val config = plugin.config
+        return mapOf(
+            "id" to pack.id.toString(),
+            "url" to host.urlOf(pack.fileName).toString(),
+            "sha1" to pack.sha1,
+            "required" to config.getBoolean("resource-pack.required", true).toString(),
+            "prompt" to config.getString("resource-pack.prompt").orEmpty(),
+        )
     }
 
     /**
@@ -110,12 +125,15 @@ class ResourcePack(private val plugin: Distortion, private val versions: ClientV
         return out.toByteArray()
     }
 
-    /** Waits a moment after joining, so the pack does not arrive in the same instant as everything else the server sends. */
+    /** Tells the shared host a player joined: it sends this pack and the other plugins' together, after the join delay. */
     @EventHandler
     fun onJoin(event: PlayerJoinEvent) {
         val player = event.player
-        val delay = plugin.config.getInt("resource-pack.join-delay-ticks", 40).coerceAtLeast(0).toLong()
-        plugin.server.scheduler.runTaskLater(plugin, Runnable { if (player.isOnline) send(player) }, delay)
+        if (eraOf(player)?.let(built::get) == null) {
+            notifyUnsupported(player)
+            return
+        }
+        host.joined(player.uniqueId)
     }
 
     /** Sends the pack for the player's client version when it is their turn, spaced out from packs other plugins send them. */
