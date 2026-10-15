@@ -26,7 +26,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     companion object {
         const val SLOTS = 256
-        private const val GLYPH = "󰀐"
+        private const val GLYPH = "\uDBCD\uDDCF"
         private const val OPACITY: Byte = 123
         private const val SCALE_UNIT = 0.01f
         private const val START_DELAY_TICKS = 3L

@@ -2,8 +2,14 @@
 	"pack": {
 		"pack_format": 55,
 		"description": [
-			"\n",
-			{"text": "§f󼦍"}
+			{
+				"text": "Distortion",
+				"color": "aqua"
+			},
+			{
+				"text": "\nRipples anchored in the world",
+				"color": "gray"
+			}
 		]
-    }   
+	}
 }
