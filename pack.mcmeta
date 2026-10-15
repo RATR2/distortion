@@ -1,6 +1,10 @@
 {
 	"pack": {
-		"pack_format": 55,
+		"pack_format": 42,
+		"supported_formats": {
+			"min_inclusive": 42,
+			"max_inclusive": 46
+		},
 		"description": [
 			"\n",
 			{"text": "§f󼦍"}

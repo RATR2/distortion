@@ -6,8 +6,7 @@
     },
     "passes": [
         {
-            "vertex_shader": "minecraft:post/screenquad",
-            "fragment_shader": "minecraft:post/transparency",
+            "program": "minecraft:post/transparency",
             "inputs": [
                 {
                     "sampler_name": "Main",
@@ -67,31 +66,17 @@
             "output": "final"
         },
         {
-            "vertex_shader": "minecraft:post/blit",
-            "fragment_shader": "minecraft:post/blit",
+            "program": "minecraft:post/blit",
             "inputs": [
                 {
                     "sampler_name": "In",
                     "target": "final"
                 }
             ],
-            "uniforms": [
-                {
-                    "name": "ColorModulate",
-                    "type": "vec4",
-                    "values": [
-                        1.0,
-                        1.0,
-                        1.0,
-                        1.0
-                    ]
-                }
-            ],
             "output": "minecraft:main"
         },
         {
-            "vertex_shader": "minecraft:post/screenquad",
-            "fragment_shader": "distortion:post/ripple_mask",
+            "program": "distortion:post/ripple_mask",
             "inputs": [
                 {
                     "sampler_name": "In",
@@ -101,8 +86,7 @@
             "output": "mask"
         },
         {
-            "vertex_shader": "minecraft:post/screenquad",
-            "fragment_shader": "distortion:post/ripple",
+            "program": "distortion:post/ripple",
             "inputs": [
                 {
                     "sampler_name": "In",
@@ -113,50 +97,14 @@
                     "target": "mask"
                 }
             ],
-            "output": "swap",
-            "uniforms": [
-                {
-                    "name": "Width",
-                    "type": "float",
-                    "values": [
-                        0.7
-                    ]
-                },
-                {
-                    "name": "Strength",
-                    "type": "float",
-                    "values": [
-                        0.4
-                    ]
-                },
-                {
-                    "name": "Debug",
-                    "type": "float",
-                    "values": [
-                        0.0
-                    ]
-                }
-            ]
+            "output": "swap"
         },
         {
-            "vertex_shader": "minecraft:post/blit",
-            "fragment_shader": "minecraft:post/blit",
+            "program": "minecraft:post/blit",
             "inputs": [
                 {
                     "sampler_name": "In",
                     "target": "swap"
-                }
-            ],
-            "uniforms": [
-                {
-                    "name": "ColorModulate",
-                    "type": "vec4",
-                    "values": [
-                        1.0,
-                        1.0,
-                        1.0,
-                        1.0
-                    ]
                 }
             ],
             "output": "minecraft:main"
