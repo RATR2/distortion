@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="logo.png" alt="Distortion logo" width="128" height="128">
+
 # Distortion
 
 [![Issues](https://img.shields.io/github/issues/RATR2/distortion?style=for-the-badge&logo=github)](https://github.com/RATR2/distortion/issues)
