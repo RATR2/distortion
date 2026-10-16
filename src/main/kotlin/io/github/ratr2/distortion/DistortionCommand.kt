@@ -36,7 +36,7 @@ class DistortionCommand(
                 .then(
                     Commands.argument("hex", StringArgumentType.string())
                         .then(
-                            Commands.argument("radius", DoubleArgumentType.doubleArg(0.01))
+                            Commands.argument("radius", DoubleArgumentType.doubleArg(0.01, RippleManager.MAX_RADIUS))
                                 .then(
                                     Commands.argument("ticks", IntegerArgumentType.integer(1))
                                         .executes { spawn(it, it.source.location) }

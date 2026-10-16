@@ -14,6 +14,9 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:26.3.build.+")
     compileOnly("com.viaversion:viaversion-api:5.12.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+    testImplementation(kotlin("test"))
+    testImplementation("io.papermc.paper:paper-api:26.3.build.+")
 }
 
 kotlin {
@@ -32,6 +35,10 @@ tasks {
 
     jar {
         archiveClassifier.set("plain")
+    }
+
+    test {
+        useJUnitPlatform()
     }
 
     runServer {

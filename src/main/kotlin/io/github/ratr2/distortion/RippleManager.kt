@@ -34,6 +34,11 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         private const val MIN_RADIUS = 0.05f
         private val POST_EFFECT = Key.key("distortion", "ripple")
         private val DEBUG_EFFECT = Key.key("distortion", "ripple_debug")
+
+        /** The biggest ripple radius in blocks; larger ones are not useful and could overflow the float the client takes. */
+        const val MAX_RADIUS = 1024.0
+
+        fun validRadius(radius: Double) = radius.isFinite() && radius > 0 && radius <= MAX_RADIUS
     }
 
     private val slots = arrayOfNulls<TextDisplay>(SLOTS)
@@ -43,7 +48,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     /** Spawns a ripple growing from 0 to [radius] blocks while fading out over [ticks]; false if all slots are busy. */
     fun spawn(location: Location, rgb: Int, radius: Double, ticks: Int): Boolean {
-        require(radius > 0 && ticks > 0) { "radius and ticks must be positive" }
+        require(validRadius(radius) && ticks > 0) { "radius must be between 0 and $MAX_RADIUS blocks and ticks must be positive" }
         val world = location.world ?: return false
         val slot = slots.indexOfFirst { it == null }
         if (slot < 0) return false
@@ -82,6 +87,16 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
     fun clear() {
         for (slot in slots.indices) slots[slot]?.let { remove(slot, it) }
         pack.loadedPlayers().filter(pack::usesPostEffects).forEach { it.postEffects().remove(effectFor(it)) }
+    }
+
+    /** The player's pack failed or was removed: hide the markers they could not draw and drop the effect that needs the pack. */
+    fun onPackLost(player: Player, usedPostEffects: Boolean) {
+        slots.filterNotNull().forEach { player.hideEntity(plugin, it) }
+        if (usedPostEffects) {
+            debugging.remove(player.uniqueId)
+            player.postEffects().remove(POST_EFFECT)
+            player.postEffects().remove(DEBUG_EFFECT)
+        }
     }
 
     fun onPackLoaded(player: Player) {

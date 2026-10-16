@@ -46,6 +46,7 @@ class ResourcePack(private val plugin: Distortion, private val versions: ClientV
 
     private val loaded = HashMap<UUID, PackEra>()
     var onLoaded: (Player) -> Unit = {}
+    var onLost: (Player, Boolean) -> Unit = { _, _ -> }
 
     init {
         start()
@@ -183,7 +184,7 @@ class ResourcePack(private val plugin: Distortion, private val versions: ClientV
                 }
             }
             Status.DECLINED, Status.FAILED_DOWNLOAD, Status.FAILED_RELOAD, Status.INVALID_URL, Status.DISCARDED ->
-                loaded.remove(player.uniqueId)
+                loaded.remove(player.uniqueId)?.let { onLost(player, it.usesPostEffects) }
             else -> {}
         }
     }

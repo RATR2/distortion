@@ -21,6 +21,7 @@ class Distortion : JavaPlugin() {
         pack = ResourcePack(this, versions)
         ripples = RippleManager(this, pack)
         pack.onLoaded = ripples::onPackLoaded
+        pack.onLost = ripples::onPackLost
 
         server.pluginManager.registerEvents(pack, this)
         server.pluginManager.registerEvents(ripples, this)
