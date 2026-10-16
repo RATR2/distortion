@@ -17,7 +17,7 @@ object DistortionAPI {
     @Volatile
     internal var manager: RippleManager? = null
 
-    /** Spawns a ripple of color [rgb] (0xRRGGBB) growing to [radius] blocks over [ticks]; false if disabled or all slots are busy. */
+    /** Spawns a ripple of color rgb (0xRRGGBB) growing to radius blocks over ticks; false if disabled or all slots are busy. */
     @JvmStatic
     fun spawn(location: Location, rgb: Int, radius: Double, ticks: Int): Boolean =
         manager?.spawn(location, rgb, radius, ticks) ?: false

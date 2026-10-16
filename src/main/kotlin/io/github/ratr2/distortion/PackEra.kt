@@ -1,7 +1,7 @@
 package io.github.ratr2.distortion
 
 /**
- * One embedded resource pack (`packs/[id]` in the jar, refreshed by scripts/sync-packs.sh) and the client protocol
+ * One embedded resource pack (`packs/<id>` in the jar, refreshed by scripts/sync-packs.sh) and the client protocol
  * versions it works for. The protocol numbers are the ones ViaVersion lists for each release.
  */
 enum class PackEra(

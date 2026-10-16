@@ -41,7 +41,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     val activeCount get() = slots.count { it != null }
 
-    /** Spawns a ripple growing from 0 to [radius] blocks while fading out over [ticks]; false if all slots are busy. */
+    /** Spawns a ripple growing from 0 to radius blocks while fading out over ticks; false if all slots are busy. */
     fun spawn(location: Location, rgb: Int, radius: Double, ticks: Int): Boolean {
         require(radius > 0 && ticks > 0) { "radius and ticks must be positive" }
         val world = location.world ?: return false
