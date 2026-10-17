@@ -20,6 +20,8 @@ dependencies {
 }
 
 kotlin {
+    // Tests live in the git-ignored .dev folder and only run on the developer's machine.
+    sourceSets.named("test") { kotlin.srcDir(".dev/test/kotlin") }
     jvmToolchain(25)
 }
 
