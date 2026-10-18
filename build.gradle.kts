@@ -11,18 +11,20 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.3.build.+")
+    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     compileOnly("com.viaversion:viaversion-api:5.12.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 
     testImplementation(kotlin("test"))
-    testImplementation("io.papermc.paper:paper-api:26.3.build.+")
+    testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
 }
 
 kotlin {
     // Tests live in the git-ignored .dev folder and only run on the developer's machine.
     sourceSets.named("test") { kotlin.srcDir(".dev/test/kotlin") }
-    jvmToolchain(25)
+    // Java 21 bytecode runs on every server from 1.21.4 (Java 21) up to 26.x (Java 25).
+    jvmToolchain(21)
+    compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21) }
 }
 
 tasks {
@@ -47,7 +49,7 @@ tasks {
         // Configure the Minecraft version for our task.
         // This is the only required configuration besides applying the plugin.
         // Your plugin's jar (or shadowJar if present) will be used automatically.
-        minecraftVersion("26.3")
+        minecraftVersion("1.21.4")
         jvmArgs("-Xms2G", "-Xmx2G")
     }
 

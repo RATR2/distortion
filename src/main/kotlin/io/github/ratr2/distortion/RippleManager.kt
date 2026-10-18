@@ -86,7 +86,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
 
     fun clear() {
         for (slot in slots.indices) slots[slot]?.let { remove(slot, it) }
-        pack.loadedPlayers().filter(pack::usesPostEffects).forEach { it.postEffects().remove(effectFor(it)) }
+        pack.loadedPlayers().filter(pack::usesPostEffects).forEach { PostEffectsCompat.remove(it, effectFor(it)) }
     }
 
     /** The player's pack failed or was removed: hide the markers they could not draw and drop the effect that needs the pack. */
@@ -94,8 +94,8 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
         slots.filterNotNull().forEach { player.hideEntity(plugin, it) }
         if (usedPostEffects) {
             debugging.remove(player.uniqueId)
-            player.postEffects().remove(POST_EFFECT)
-            player.postEffects().remove(DEBUG_EFFECT)
+            PostEffectsCompat.remove(player, POST_EFFECT)
+            PostEffectsCompat.remove(player, DEBUG_EFFECT)
         }
     }
 
@@ -109,7 +109,7 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
      * the Fabulous graphics transparency effect, so there is nothing to add for them.
      */
     private fun applyEffect(player: Player) {
-        if (pack.usesPostEffects(player)) player.postEffects().add(effectFor(player))
+        if (pack.usesPostEffects(player)) PostEffectsCompat.add(player, effectFor(player))
     }
 
     @EventHandler
@@ -122,10 +122,9 @@ class RippleManager(private val plugin: Distortion, private val pack: ResourcePa
     /** False when this player's client has no debug effect (only the 26.3 pack ships one). */
     fun setDebug(player: Player, enabled: Boolean): Boolean {
         if (!pack.supportsPostEffects(player)) return false
-        val effects = player.postEffects()
-        effects.remove(effectFor(player))
+        PostEffectsCompat.remove(player, effectFor(player))
         if (enabled) debugging.add(player.uniqueId) else debugging.remove(player.uniqueId)
-        if (pack.hasLoaded(player)) effects.add(effectFor(player))
+        if (pack.hasLoaded(player)) PostEffectsCompat.add(player, effectFor(player))
         return true
     }
 

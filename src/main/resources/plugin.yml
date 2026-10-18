@@ -2,7 +2,7 @@ name: distortion
 version: '${version}'
 
 main: io.github.ratr2.distortion.Distortion
-api-version: '26.3'
+api-version: '1.21.4'
 load: POSTWORLD
 softdepend: [ViaVersion, ViaBackwards]
 

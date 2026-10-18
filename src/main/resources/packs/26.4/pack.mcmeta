@@ -1,0 +1,22 @@
+{
+	"pack": {
+		"min_format": [
+			97,
+			1
+		],
+		"max_format": [
+			97,
+			1
+		],
+		"description": [
+			{
+				"text": "Distortion",
+				"color": "aqua"
+			},
+			{
+				"text": "\nRipples anchored in the world",
+				"color": "gray"
+			}
+		]
+	}
+}
